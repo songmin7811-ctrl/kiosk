@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>우리반 베이커리 키오스크</title>
+<style>
+  :root{
+    --main:#e8722c; --main-dark:#c95c18; --bg:#fff7ef; --card:#ffffff;
+    --ink:#2b2b2b; --line:#ecdcc9; --good:#2e9e5b; --blue:#2f6fd0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; font-family:"Malgun Gothic","맑은 고딕",system-ui,sans-serif;}
+  html,body{margin:0; height:100%;}
+  body{background:var(--bg); color:var(--ink); user-select:none;}
+  .screen{display:none; min-height:100vh; flex-direction:column;}
+  .screen.active{display:flex;}
+  header.bar{background:var(--main); color:#fff; padding:18px 22px; display:flex; align-items:center; justify-content:space-between;}
+  header.bar h1{font-size:26px; margin:0;}
+  .btn{border:none; border-radius:18px; font-weight:800; cursor:pointer; transition:transform .05s;}
+  .btn:active{transform:scale(.97);}
+  .btn-main{background:var(--main); color:#fff;}
+  .btn-ghost{background:#fff; color:var(--main); border:3px solid var(--main);}
+  .btn-gray{background:#eee; color:#555;}
+
+  .status{position:fixed; top:14px; left:18px; z-index:40; background:#fff; border-radius:20px; padding:8px 14px; font-size:14px; font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.12);}
+  .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; background:#bbb;}
+  .dot.on{background:var(--good);} .dot.off{background:#e0503a;}
+
+  #home{align-items:center; justify-content:center; text-align:center; gap:28px; padding:30px;}
+  #home .logo{font-size:90px;}
+  #home h1{font-size:46px; margin:0;}
+  #home p{font-size:22px; color:#8a7a68; margin:0;}
+  #home .start{font-size:40px; padding:34px 70px; border-radius:28px; box-shadow:0 8px 0 var(--main-dark);}
+  #home .setup-link{position:fixed; top:14px; right:18px; background:rgba(0,0,0,.06); border:none; border-radius:14px; padding:12px 16px; font-size:16px; color:#7a6a58; cursor:pointer;}
+
+  .grid{flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; padding:20px; align-content:start;}
+  .prod{background:var(--card); border:3px solid var(--line); border-radius:22px; padding:14px; text-align:center; cursor:pointer; display:flex; flex-direction:column; gap:8px;}
+  .prod:active{border-color:var(--main);}
+  .prod .pic{width:100%; aspect-ratio:1/1; border-radius:16px; background:#faf1e6 center/cover no-repeat; display:flex; align-items:center; justify-content:center; font-size:74px;}
+  .prod .nm{font-size:26px; font-weight:800;}
+  .prod .pr{font-size:24px; color:var(--main-dark); font-weight:800;}
+  .prod .add{margin-top:4px; background:var(--main); color:#fff; border:none; border-radius:14px; padding:14px; font-size:22px; font-weight:800;}
+
+  .cartbar{background:#fff; border-top:4px solid var(--main); padding:16px 20px;}
+  .cartlist{max-height:26vh; overflow:auto; margin-bottom:10px;}
+  .cartrow{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px dashed var(--line); font-size:22px;}
+  .qtybox{display:flex; align-items:center; gap:12px;}
+  .qtybtn{width:46px; height:46px; border-radius:12px; border:none; font-size:28px; font-weight:900; background:#f0e6d8; color:var(--main-dark);}
+  .cart-empty{color:#b0a08e; text-align:center; font-size:22px; padding:14px 0;}
+  .totalrow{display:flex; justify-content:space-between; align-items:center; font-size:30px; font-weight:900; margin:6px 0 12px;}
+  .pay-actions{display:flex; gap:12px;}
+  .pay-actions .btn{flex:1; padding:22px; font-size:26px;}
+
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:24px; z-index:50;}
+  .overlay.active{display:flex;}
+  .modal{background:#fff; border-radius:26px; padding:34px; width:min(560px,92vw); text-align:center;}
+  .modal h2{font-size:34px; margin:0 0 18px;}
+  .paychoice{display:flex; gap:16px; margin-top:10px;}
+  .paychoice .btn{flex:1; padding:30px 10px; font-size:26px; display:flex; flex-direction:column; gap:8px; align-items:center;}
+  .paychoice .ic{font-size:56px;}
+  .tag-anim{font-size:80px; margin:14px 0;}
+  .receipt{text-align:left; font-size:22px; background:#faf4ec; border-radius:16px; padding:18px; margin:16px 0;}
+  .ordernum{font-size:64px; font-weight:900; color:var(--main); letter-spacing:3px;}
+
+  #setup{background:#f4f6fa;}
+  #setup .grid{grid-template-columns:1fr 1fr 1fr;}
+  #setup .prod .add{background:var(--blue);}
+  .hint{background:#eaf1fb; color:#2f5aa0; padding:14px 20px; font-size:19px;}
+  input[type=file]{display:none;}
+  .foot{padding:16px 20px; display:flex; gap:12px;}
+  .foot .btn{flex:1; padding:20px; font-size:24px;}
+  .cfg{padding:16px 20px; display:flex; gap:16px; flex-wrap:wrap;}
+  .cfg label{flex:1; min-width:240px; font-size:17px; font-weight:700; color:#3b5aa0;}
+  .cfg input[type=text]{display:block; width:100%; margin-top:6px; padding:12px 14px; font-size:20px; border:2px solid #cdd7ea; border-radius:12px;}
+  .prwrap{display:flex; align-items:center; justify-content:center; gap:6px; margin-top:2px;}
+  .priceIn{width:104px; padding:8px; font-size:22px; font-weight:800; text-align:right; border:2px solid var(--blue); border-radius:10px; color:var(--main-dark);}
+  .credit{position:fixed; bottom:8px; right:14px; z-index:30; font-size:13px; color:#b0a08e; background:rgba(255,255,255,.7); border-radius:10px; padding:4px 10px;}
+</style>
+</head>
+<body>
+
+<div class="status" id="statusPill"><span class="dot" id="statusDot"></span><span id="statusText">준비 중</span></div>
+<div class="credit">제작: 김수빈 선생님</div>
+
+<section id="home" class="screen active">
+  <button class="setup-link" onclick="go('setup')">⚙️ 설정(선생님)</button>
+  <div class="logo">🥐</div>
+  <h1>우리반 베이커리</h1>
+  <p>먹고 싶은 빵을 골라 주문해 보세요</p>
+  <button class="btn btn-main start" onclick="go('order')">주문 시작하기 👉</button>
+  <p style="font-size:15px;color:#b0a08e;margin-top:18px;">제작: 김수빈 선생님</p>
+</section>
+
+<section id="order" class="screen">
+  <header class="bar">
+    <h1>🥐 우리반 베이커리</h1>
+    <button class="btn btn-gray" style="padding:12px 18px;font-size:18px" onclick="go('home')">처음으로</button>
+  </header>
+  <div class="grid" id="prodGrid"></div>
+  <div class="cartbar">
+    <div class="cartlist" id="cartList"><div class="cart-empty">담은 상품이 없어요. 위에서 빵을 골라 주세요.</div></div>
+    <div class="totalrow"><span>합계</span><span id="totalTxt">0원</span></div>
+    <div class="pay-actions">
+      <button class="btn btn-ghost" onclick="clearCart()">전체 취소</button>
+      <button class="btn btn-main" onclick="openPay()">결제하기 💳</button>
+    </div>
+  </div>
+</section>
+
+<section id="setup" class="screen">
+  <header class="bar" style="background:var(--blue)">
+    <h1>⚙️ 설정 (선생님)</h1>
+    <button class="btn btn-gray" style="padding:12px 18px;font-size:18px" onclick="go('home')">완료</button>
+  </header>
+  <div class="hint">① <b>매장 코드</b>를 선생님 「주문 받는 화면」과 똑같이 맞추기 ② 각 상품의 <b>가격</b>을 입력하기 ③ <b>[사진 찍기]</b>로 전날 만든 빵을 찍어 등록하기</div>
+  <div class="cfg">
+    <label>매장 코드 (선생님 화면과 동일하게)
+      <input type="text" id="storeCode" onchange="saveCfg()" autocapitalize="off" autocorrect="off" spellcheck="false">
+    </label>
+    <label>이 태블릿 이름 (예: 가모둠 김OO / 1번)
+      <input type="text" id="deviceName" onchange="saveCfg()" placeholder="비워도 됩니다">
+    </label>
+  </div>
+  <div class="grid" id="setupGrid"></div>
+  <div class="foot">
+    <button class="btn btn-gray" onclick="resetPhotos()">사진 모두 지우기</button>
+  </div>
+</section>
+
+<div class="overlay" id="payOverlay">
+  <div class="modal" id="payModal"></div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" capture="environment">
+
+<script>
+var PRODUCTS = [
+  {id:'sausage', name:'소시지빵', price:1500, emoji:'🌭'},
+  {id:'muffin',  name:'초코머핀', price:2000, emoji:'🧁'},
+  {id:'cookie',  name:'버터쿠키', price:1000, emoji:'🍪'},
+  {id:'milk',    name:'우유',     price:1000, emoji:'🥛'},
+  {id:'soda',    name:'탄산수',   price:1500, emoji:'🥤'}
+];
+var DEFAULT_CODE='banghak-bakery-7k29xa';
+var PHOTO_KEY='bakery_kiosk_photos_v1';
+var photos={}; try{ photos=JSON.parse(localStorage.getItem(PHOTO_KEY)||'{}'); }catch(e){ photos={}; }
+var store = localStorage.getItem('bakery_store_code') || DEFAULT_CODE;
+var device = localStorage.getItem('bakery_device_name') || '';
+var PRICE_KEY='bakery_kiosk_prices_v1';
+try{ var _sp=JSON.parse(localStorage.getItem(PRICE_KEY)||'{}'); for(var _i=0;_i<PRODUCTS.length;_i++){ if(_sp[PRODUCTS[_i].id]!=null) PRODUCTS[_i].price=_sp[PRODUCTS[_i].id]; } }catch(e){}
+var cart={}; var currentSetupId=null;
+
+function won(n){ return n.toLocaleString('ko-KR')+'원'; }
+function ntfyUrl(){ return 'https://ntfy.sh/'+encodeURIComponent(store); }
+function setStatus(ok,msg){
+  document.getElementById('statusDot').className='dot '+(ok?'on':'off');
+  document.getElementById('statusText').textContent=msg||(ok?'주문 보낼 준비됨':'연결 확인 필요');
+}
+function go(id){
+  var scr=document.querySelectorAll('.screen');
+  for(var i=0;i<scr.length;i++){ scr[i].classList.remove('active'); }
+  document.getElementById(id).classList.add('active');
+  if(id==='order'){ renderProducts(); renderCart(); }
+  if(id==='setup'){ renderSetup(); document.getElementById('storeCode').value=store; document.getElementById('deviceName').value=device; }
+  window.scrollTo(0,0);
+}
+function saveCfg(){
+  store=(document.getElementById('storeCode').value||DEFAULT_CODE).trim();
+  device=(document.getElementById('deviceName').value||'').trim();
+  localStorage.setItem('bakery_store_code',store);
+  localStorage.setItem('bakery_device_name',device);
+  setStatus(true,'매장 코드: '+store);
+}
+function picStyle(p){ return photos[p.id]?"background-image:url('"+photos[p.id]+"')":''; }
+function renderProducts(){
+  var html='';
+  for(var i=0;i<PRODUCTS.length;i++){ var p=PRODUCTS[i];
+    html+='<div class="prod" onclick="addToCart(\''+p.id+'\')">'
+      +'<div class="pic" style="'+picStyle(p)+'">'+(photos[p.id]?'':p.emoji)+'</div>'
+      +'<div class="nm">'+p.name+'</div>'
+      +'<div class="pr">'+won(p.price)+'</div>'
+      +'<button class="add" onclick="event.stopPropagation();addToCart(\''+p.id+'\')">담기 +</button></div>';
+  }
+  document.getElementById('prodGrid').innerHTML=html;
+}
+function addToCart(id){ cart[id]=(cart[id]||0)+1; renderCart(); }
+function changeQty(id,d){ cart[id]=(cart[id]||0)+d; if(cart[id]<=0){ delete cart[id]; } renderCart(); }
+function clearCart(){ cart={}; renderCart(); }
+function P(id){ for(var i=0;i<PRODUCTS.length;i++){ if(PRODUCTS[i].id===id) return PRODUCTS[i]; } }
+function cartTotal(){ var t=0; for(var id in cart){ t+=P(id).price*cart[id]; } return t; }
+function renderCart(){
+  var list=document.getElementById('cartList'); var ids=Object.keys(cart);
+  if(ids.length===0){ list.innerHTML='<div class="cart-empty">담은 상품이 없어요. 위에서 빵을 골라 주세요.</div>'; }
+  else{
+    var html='';
+    for(var i=0;i<ids.length;i++){ var id=ids[i]; var p=P(id); var q=cart[id];
+      html+='<div class="cartrow"><span>'+(photos[id]?'':p.emoji)+' '+p.name+'</span>'
+        +'<span class="qtybox"><button class="qtybtn" onclick="changeQty(\''+id+'\',-1)">−</button><b>'+q+'</b>'
+        +'<button class="qtybtn" onclick="changeQty(\''+id+'\',1)">＋</button></span>'
+        +'<b>'+won(p.price*q)+'</b></div>';
+    }
+    list.innerHTML=html;
+  }
+  document.getElementById('totalTxt').textContent=won(cartTotal());
+}
+function openPay(){
+  if(Object.keys(cart).length===0){ alert('먼저 빵을 담아 주세요.'); return; }
+  var m=document.getElementById('payModal');
+  m.innerHTML='<h2>어떻게 결제할까요?</h2>'
+    +'<div class="totalrow" style="justify-content:center">합계 '+won(cartTotal())+'</div>'
+    +'<div class="paychoice">'
+    +'<button class="btn btn-main" onclick="doPay(\'카드\')"><span class="ic">💳</span>카드</button>'
+    +'<button class="btn btn-ghost" onclick="doPay(\'현금\')"><span class="ic">💵</span>현금</button></div>'
+    +'<div style="margin-top:18px"><button class="btn btn-gray" style="padding:14px 26px;font-size:20px" onclick="closePay()">취소</button></div>';
+  document.getElementById('payOverlay').classList.add('active');
+}
+function closePay(){ document.getElementById('payOverlay').classList.remove('active'); }
+function doPay(method){
+  var m=document.getElementById('payModal');
+  var msg=method==='카드'?'카드를 대 주세요':'현금을 넣어 주세요';
+  var ic=method==='카드'?'💳':'💵';
+  m.innerHTML='<h2>'+msg+'</h2><div class="tag-anim">'+ic+'</div><p style="font-size:22px;color:#8a7a68">결제 진행 중...</p>';
+  setTimeout(function(){ showDone(method); },1600);
+}
+function sendOrder(order){
+  fetch(ntfyUrl(),{method:'POST',body:JSON.stringify(order)})
+    .then(function(r){ setStatus(!!r.ok, r.ok?'주문 전송 완료':'전송 실패 — 코드/인터넷 확인'); })
+    .catch(function(){ setStatus(false,'전송 실패 — 인터넷 확인'); });
+}
+function showDone(method){
+  var num=String(Math.floor(Math.random()*90)+10);
+  var now=new Date();
+  var hh=String(now.getHours()); if(hh.length<2){ hh='0'+hh; }
+  var mm=String(now.getMinutes()); if(mm.length<2){ mm='0'+mm; }
+  var items=[]; for(var id in cart){ items.push({name:P(id).name, qty:cart[id], price:P(id).price}); }
+  var total=cartTotal();
+  var order={ id:now.getTime()+'-'+num, no:num, device:device, items:items, total:total, method:method, time:hh+':'+mm };
+  sendOrder(order);
+  var itemsHtml=''; for(var i=0;i<items.length;i++){ itemsHtml+=items[i].name+' × '+items[i].qty+'<br>'; }
+  var m=document.getElementById('payModal');
+  m.innerHTML='<h2>✅ 결제 완료!</h2>'
+    +'<p style="font-size:22px;margin:4px 0">주문번호</p>'
+    +'<div class="ordernum">'+num+'번</div>'
+    +'<div class="receipt">'+itemsHtml+'<hr style="border:none;border-top:1px dashed #d8c8b4">결제수단: '+method+'<br><b>합계: '+won(total)+'</b></div>'
+    +'<p style="font-size:20px;color:#8a7a68">번호를 말하고 빵을 받아 가세요 😊</p>'
+    +'<button class="btn btn-main" style="padding:18px 40px;font-size:24px;margin-top:6px" onclick="finish()">처음으로</button>';
+}
+function finish(){ closePay(); clearCart(); go('home'); }
+function renderSetup(){
+  var html='';
+  for(var i=0;i<PRODUCTS.length;i++){ var p=PRODUCTS[i];
+    html+='<div class="prod"><div class="pic" style="'+picStyle(p)+'">'+(photos[p.id]?'':p.emoji)+'</div>'
+      +'<div class="nm">'+p.name+'</div>'
+      +'<div class="prwrap"><input class="priceIn" type="number" inputmode="numeric" min="0" value="'+p.price+'" onchange="savePrice(\''+p.id+'\',this.value)"><span>원</span></div>'
+      +'<button class="add" onclick="pickPhoto(\''+p.id+'\')">📷 '+(photos[p.id]?'사진 바꾸기':'사진 찍기')+'</button></div>';
+  }
+  document.getElementById('setupGrid').innerHTML=html;
+}
+function savePrice(id,v){
+  var n=parseInt(v,10); if(isNaN(n)||n<0){ n=0; }
+  for(var i=0;i<PRODUCTS.length;i++){ if(PRODUCTS[i].id===id){ PRODUCTS[i].price=n; } }
+  var sp={}; for(var i=0;i<PRODUCTS.length;i++){ sp[PRODUCTS[i].id]=PRODUCTS[i].price; }
+  try{ localStorage.setItem(PRICE_KEY,JSON.stringify(sp)); }catch(e){}
+}
+function pickPhoto(id){ currentSetupId=id; document.getElementById('fileInput').click(); }
+document.getElementById('fileInput').addEventListener('change',function(e){
+  var f=e.target.files[0]; if(!f||!currentSetupId) return;
+  var reader=new FileReader();
+  reader.onload=function(ev){ var img=new Image();
+    img.onload=function(){ var max=700; var w=img.width,h=img.height; var sc=Math.min(1,max/Math.max(w,h)); w=Math.round(w*sc); h=Math.round(h*sc);
+      var c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h);
+      photos[currentSetupId]=c.toDataURL('image/jpeg',0.8);
+      try{ localStorage.setItem(PHOTO_KEY,JSON.stringify(photos)); }catch(err){ alert('사진 저장 공간이 부족해요. 기존 사진을 지우고 다시 시도하세요.'); }
+      renderSetup(); };
+    img.src=ev.target.result; };
+  reader.readAsDataURL(f); e.target.value='';
+});
+function resetPhotos(){ if(confirm('등록한 사진을 모두 지울까요?')){ photos={}; localStorage.removeItem(PHOTO_KEY); renderSetup(); } }
+
+setStatus(true,'매장 코드: '+store);
+</script>
+</body>
+</html>
+                                                                                             
